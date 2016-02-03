@@ -361,6 +361,17 @@ class ClientTest extends TestCase
         $this->expectPromiseResolveWith('', $this->client->execResize(123, 800, 600));
     }
 
+    public function testEventStream()
+    {
+        $stream = $this->getMock('React\Stream\ReadableStreamInterface');
+
+        $this->expectRequest('get', '/events?since=1454503990&until=', $this->createResponse(''));
+        $this->streamingParser->expects($this->once())->method('parsePlainStream')->will($this->returnValue($stream));
+
+        $this->assertSame($stream, $this->client->eventStream(1454503990));
+    }
+
+
     private function expectRequestFlow($method, $url, Response $response, $parser)
     {
         $return = (string)$response->getBody();

@@ -858,6 +858,41 @@ class Client
         )->then(array($this->parser, 'expectEmpty'));
     }
 
+    /**
+     * Get container events from docker, either in real time via streaming, or via polling (using since).
+     *
+     * Docker containers report the following events:
+     *   attach, commit, copy, create, destroy, die, exec_create, exec_start, export, kill, oom, pause, rename,
+     *   resize, restart, start, stop, top, unpause
+     * and Docker images report:
+     *   untag, delete
+     *
+     * @param int|null $since Timestamp used for polling
+     * @param int|null $until Timestamp used for pollind
+     * @param array $filters An array of filters with "event", "image" and "container" keys
+     * @return ReadableStreamInterface stream of image push messages
+     * @uses self::authHeaders()
+     * @link https://docs.docker.com/engine/reference/api/docker_remote_api_v1.19/#monitor-docker-s-events
+     */
+    public function eventStream($since = null, $until = null, array $filters = array())
+    {
+        $filters = array_filter($filters, function ($value, $key) {
+            return in_array($key, array('event', 'image', 'container'));
+        });
+        return $this->streamingParser->parseJsonStream(
+            $this->browser->get(
+                $this->browser->resolve(
+                    '/events{?since,until,filters}',
+                    array(
+                        'since' => ($since === null ? time() : $since),
+                        'until' => ($until === null ? '' : $until),
+                        'filters' => (sizeof($filters) > 0 ? json_encode($filters) : null),
+                    )
+                )
+            )
+        );
+    }
+
     private function postJson($url, $data)
     {
         $body = $this->json($data);
